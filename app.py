@@ -78,7 +78,7 @@ def safe_user_input(original_input: str) -> str:
 # 3. 網頁 UI 介面設計（規格書：網頁 UI 排版與畫面呈現）
 # ==========================================
 st.title("🐢 AI 海龜湯攻防戰")
-st.caption("💡 提示注入防禦與應用開發實戰系統 | 指導老師：子青老師")
+st.caption("💡 提示注入防禦與應用開發實戰系統 | 指導老師：闕河正老師")
 
 # 側邊欄控制與資訊提示
 with st.sidebar:
