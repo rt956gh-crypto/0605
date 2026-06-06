@@ -30,7 +30,7 @@ if "secret_answer" not in st.session_state:
 
 def generate_ai_puzzle():
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash-preview')
         prompt = "請隨機想出一個常見的具體名詞作為海龜湯的謎底，只需要吐出名詞本身。"
         response = model.generate_content(prompt)
         ans = response.text.strip()
@@ -79,8 +79,8 @@ if user_input := st.chat_input("請提問（50字以內）...", max_chars=50):
             system_instruction = f"你是海龜湯主持人，秘密謎底是：{st.session_state.secret_answer}。只能回答：是/不是/與故事無關/不完全是。"
 
             model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
-                system_instruction=system_instruction
+            model_name='gemini-2.5-flash-preview',
+            system_instruction=system_instruction
             )
 
             history = []
