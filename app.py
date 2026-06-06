@@ -77,8 +77,9 @@ if user_input := st.chat_input("請提問（50字以內）...", max_chars=50):
 
         try:
             system_instruction = f"你是海龜湯主持人，秘密謎底是：{st.session_state.secret_answer}。只能回答：是/不是/與故事無關/不完全是。"
+
             model = genai.GenerativeModel(
-               model = genai.GenerativeModel('gemini-1.5-flash'),
+                model_name='gemini-1.5-flash',
                 system_instruction=system_instruction
             )
 
