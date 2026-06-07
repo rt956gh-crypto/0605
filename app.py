@@ -20,7 +20,36 @@ except Exception as e:
     st.error("❌ API Key 設定失敗")
     st.stop()
 
-DEFAULT_PUZZLES = ["西瓜", "籃球", "衛生紙", "智慧型手機", "珍珠奶茶", "腳踏車"]
+# ==========================================
+# 冷門謎底清單（比較難猜）
+# ==========================================
+DEFAULT_PUZZLES = [
+    "紅綠燈",
+    "捷運閘門",
+    "鈔票",
+    "身分證",
+    "密碼鎖",
+    "遙控器",
+    "電梯",
+    "打卡鐘",
+    "收據",
+    "時鐘指針",
+    "橡皮筋",
+    "釘書機",
+    "磁鐵",
+    "迴紋針",
+    "保鮮膜",
+    "郵筒",
+    "飲水機",
+    "回音",
+    "影子",
+    "生日",
+    "密碼",
+    "發票",
+    "門把",
+    "冷氣遙控器",
+    "電梯按鈕"
+]
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -29,15 +58,8 @@ if "secret_answer" not in st.session_state:
     st.session_state.secret_answer = random.choice(DEFAULT_PUZZLES)
 
 def generate_ai_puzzle():
-    try:
-        model = genai.GenerativeModel('gemini-3.5-flash')
-        prompt = "請隨機想出一個常見的具體名詞作為海龜湯的謎底，只需要吐出名詞本身。"
-        response = model.generate_content(prompt)
-        ans = response.text.strip()
-        if ans and len(ans) < 10:
-            st.session_state.secret_answer = ans
-    except Exception:
-        st.session_state.secret_answer = random.choice(DEFAULT_PUZZLES)
+    """直接從冷門清單隨機選取謎底（不呼叫 AI 生成，確保難度）"""
+    st.session_state.secret_answer = random.choice(DEFAULT_PUZZLES)
 
 def safe_user_input(original_input: str) -> str:
     attack_keywords = ["忽略", "ignore", "指令", "規則", "角色", "翻譯", "base64", "編碼", "答案是", "說出", "告訴我"]
@@ -63,7 +85,7 @@ def safe_user_input(original_input: str) -> str:
     return safe_input
 
 st.title("🐢 AI 海龜湯攻防戰")
-st.caption("💡 提示注入防禦與應用開發實戰系統")
+st.caption("💡 提示注入防禦與應用開發實戰系統 | 冷門謎底挑戰模式")
 
 with st.sidebar:
     st.header("🎮 遊戲主控台")
@@ -78,6 +100,11 @@ with st.sidebar:
     2. 防禦性提問延遲：0.8秒
     3. 全後端 AI 自行判定防禦
     """)
+    
+    # ⚠️ 競賽當天請將下面這行註解掉！
+    st.write("---")
+    st.warning("🚨 [測試環境專用] 當前謎底：")
+    st.code(st.session_state.secret_answer)
 
 # 顯示對話歷史
 for message in st.session_state.messages:
