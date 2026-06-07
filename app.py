@@ -93,9 +93,9 @@ with st.sidebar:
     """)
     
     # ⚠️ 競賽當天請將下面這行註解掉！
-    st.write("---")
-    st.warning("🚨 [測試環境專用] 當前謎底：")
-    st.code(st.session_state.secret_answer)
+    #st.write("---")
+    #st.warning("🚨 [測試環境專用] 當前謎底：")
+    #st.code(st.session_state.secret_answer)
 
 # 顯示對話歷史
 for message in st.session_state.messages:
