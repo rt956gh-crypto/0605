@@ -65,6 +65,48 @@ st.markdown("""
         color: #ff6b6b !important;
     }
     
+    /* 側邊欄一般文字（淺色） */
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #e0e0e0 !important;
+    }
+    
+    [data-testid="stSidebar"] p {
+        color: #d4d4d4 !important;
+    }
+    
+    [data-testid="stSidebar"] li {
+        color: #d4d4d4 !important;
+    }
+    
+    /* 側邊欄資訊框文字 */
+    [data-testid="stSidebar"] .stAlert {
+        background: rgba(255,107,107,0.15);
+        border-left: 3px solid #ff6b6b;
+    }
+    
+    [data-testid="stSidebar"] .stAlert p {
+        color: #f0f0f0 !important;
+    }
+    
+    /* 側邊欄成功框文字 */
+    [data-testid="stSidebar"] .stSuccess {
+        background: rgba(26,188,156,0.15);
+        border-left: 3px solid #1abc9c;
+    }
+    
+    [data-testid="stSidebar"] .stSuccess p {
+        color: #e0e0e0 !important;
+    }
+    
+    /* 側邊欄程式碼區塊 */
+    [data-testid="stSidebar"] .stCodeBlock {
+        background: rgba(0,0,0,0.3) !important;
+    }
+    
+    [data-testid="stSidebar"] .stCodeBlock pre {
+        color: #ff6b6b !important;
+    }
+    
     /* 按鈕樣式 */
     .stButton > button {
         background: linear-gradient(135deg, #ff6b6b, #ee5a24);
@@ -92,18 +134,8 @@ st.markdown("""
         color: white !important;
     }
     
-    /* 資訊框樣式 */
-    .stAlert {
-        background: rgba(255,107,107,0.2);
-        border-left: 5px solid #ff6b6b;
-        border-radius: 10px;
-    }
-    
-    /* 成功訊息樣式 */
-    .stSuccess {
-        background: rgba(26,188,156,0.2);
-        border-left: 5px solid #1abc9c;
-        border-radius: 10px;
+    [data-testid="stChatInput"] input::placeholder {
+        color: #aaa !important;
     }
     
     /* 動畫效果 */
@@ -136,12 +168,10 @@ DEFAULT_PUZZLES = [
     "魚板",
     "百貨公司美食街",
     "打卡鐘",
-    "時鐘秒針",
     "加油站油槍",
     "電扶梯扶手",
     "公車拉環",
     "回音",
-    "影子",
     "貴賓室門把",
     "冷氣遙控器按鍵",
 ]
