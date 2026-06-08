@@ -65,7 +65,6 @@ st.markdown("""
         color: #ff6b6b !important;
     }
     
-    /* 側邊欄一般文字（淺色） */
     [data-testid="stSidebar"] .stMarkdown {
         color: #e0e0e0 !important;
     }
@@ -78,7 +77,6 @@ st.markdown("""
         color: #d4d4d4 !important;
     }
     
-    /* 側邊欄資訊框文字 */
     [data-testid="stSidebar"] .stAlert {
         background: rgba(255,107,107,0.15);
         border-left: 3px solid #ff6b6b;
@@ -88,7 +86,6 @@ st.markdown("""
         color: #f0f0f0 !important;
     }
     
-    /* 側邊欄成功框文字 */
     [data-testid="stSidebar"] .stSuccess {
         background: rgba(26,188,156,0.15);
         border-left: 3px solid #1abc9c;
@@ -98,16 +95,6 @@ st.markdown("""
         color: #e0e0e0 !important;
     }
     
-    /* 側邊欄程式碼區塊 */
-    [data-testid="stSidebar"] .stCodeBlock {
-        background: rgba(0,0,0,0.3) !important;
-    }
-    
-    [data-testid="stSidebar"] .stCodeBlock pre {
-        color: #ff6b6b !important;
-    }
-    
-    /* 按鈕樣式 */
     .stButton > button {
         background: linear-gradient(135deg, #ff6b6b, #ee5a24);
         color: white;
@@ -123,7 +110,6 @@ st.markdown("""
         box-shadow: 0 5px 20px rgba(255,107,107,0.4);
     }
     
-    /* 輸入框樣式 */
     [data-testid="stChatInput"] > div {
         background: rgba(255,255,255,0.1);
         border-radius: 25px;
@@ -138,7 +124,6 @@ st.markdown("""
         color: #aaa !important;
     }
     
-    /* 動畫效果 */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -161,20 +146,48 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# 冷門謎底清單
+# 謎底與分類對照表
 # ==========================================
-DEFAULT_PUZZLES = [
-    "捷運閘門",
-    "魚板",
-    "百貨公司美食街",
-    "打卡鐘",
-    "加油站油槍",
-    "電扶梯扶手",
-    "公車拉環",
-    "回音",
-    "貴賓室門把",
-    "冷氣遙控器按鍵",
-]
+PUZZLE_CATEGORIES = {
+    "捷運閘門": "🚇 交通設施",
+    "魚板": "🍜 食物/食材",
+    "百貨公司美食街": "🏢 場所/地點",
+    "打卡鐘": "⏰ 辦公用品",
+    "加油站油槍": "⛽ 交通相關",
+    "電扶梯扶手": "🏢 公共設施",
+    "公車拉環": "🚌 交通設施",
+    "回音": "🌊 自然現象",
+    "門把": "🚪 日常用品",
+    "冷氣遙控器按鍵": "📱 電子產品",
+    "紅綠燈": "🚦 交通設施",
+    "身分證": "📄 證件文件",
+    "密碼鎖": "🔒 安全用品",
+    "時鐘指針": "⏰ 日常用品",
+    "橡皮筋": "📎 辦公用品",
+    "磁鐵": "🧲 日常用品",
+    "迴紋針": "📎 辦公用品",
+    "保鮮膜": "🍽️ 廚房用品",
+    "郵筒": "📮 公共設施",
+    "飲水機": "💧 公共設施",
+    "影子": "🌞 自然現象",
+    "生日": "🎂 抽象概念",
+    "密碼": "🔐 抽象概念",
+    "靜電": "⚡ 自然現象",
+    "指紋": "🖐️ 生物特徵",
+    "腳印": "👣 痕跡",
+    "心跳聲": "❤️ 生理現象",
+    "哈欠": "😴 生理現象",
+    "玻璃上的霧氣": "💨 自然現象",
+    "冷氣水滴": "💧 日常現象",
+    "手機震動": "📱 電子產品"
+}
+
+# 謎底清單（從對照表提取）
+DEFAULT_PUZZLES = list(PUZZLE_CATEGORIES.keys())
+
+def get_category_hint(secret: str) -> str:
+    """根據謎底回傳分類提示"""
+    return PUZZLE_CATEGORIES.get(secret, "❓ 未知分類")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -182,8 +195,12 @@ if "messages" not in st.session_state:
 if "secret_answer" not in st.session_state:
     st.session_state.secret_answer = random.choice(DEFAULT_PUZZLES)
 
+if "show_hint" not in st.session_state:
+    st.session_state.show_hint = False
+
 def generate_ai_puzzle():
     st.session_state.secret_answer = random.choice(DEFAULT_PUZZLES)
+    st.session_state.show_hint = False
 
 def safe_user_input(original_input: str) -> str:
     attack_keywords = ["忽略", "ignore", "指令", "規則", "角色", "翻譯", "base64", "編碼", "答案是", "說出", "告訴我"]
@@ -225,11 +242,54 @@ with st.sidebar:
         st.success("✨ 新謎底已秘密生成！")
     
     st.markdown("---")
+    
+    # ==========================================
+    # 謎底提示區塊（新增功能）
+    # ==========================================
+    st.markdown("### 🔍 謎底提示")
+    
+    # 顯示當前謎底的分類
+    current_category = get_category_hint(st.session_state.secret_answer)
+    st.info(f"📌 **當前謎底分類：**\n\n{current_category}")
+    
+    # 可選：顯示更多提示按鈕
+    if st.button("💡 顯示更多提示", use_container_width=True):
+        st.session_state.show_hint = True
+    
+    if st.session_state.show_hint:
+        # 根據分類給更具體提示
+        category = current_category.split(" ")[-1]  # 取出分類名稱
+        extra_hints = {
+            "交通設施": "🚦 這個東西與『行駛、移動、馬路』有關",
+            "食物/食材": "🍜 這是可以吃的東西，常出現在火鍋或拉麵中",
+            "場所/地點": "🏢 這是一個地點或空間，很多人會去的地方",
+            "辦公用品": "📎 辦公室或學校常見的小物品",
+            "交通相關": "⛽ 與『車子、加油、移動』有關",
+            "公共設施": "🏛️ 在公共場所可以看到或使用到的設施",
+            "自然現象": "🌊 這是大自然中會發生的現象，看不見但聽得到或感受得到",
+            "日常用品": "🏠 家裡常見的物品，每天都會用到",
+            "電子產品": "📱 需要電才能運作的產品",
+            "證件文件": "📄 用來證明身份或記錄資訊的紙本",
+            "安全用品": "🔒 用來保護財產或隱私的物品",
+            "廚房用品": "🍽️ 廚房裡會用到的東西",
+            "抽象概念": "💭 看不見摸不著，但每個人都經歷過",
+            "生物特徵": "🖐️ 每個人獨一無二的生理特徵",
+            "痕跡": "👣 人或動物留下來的印記",
+            "生理現象": "💓 身體自然產生的反應",
+            "日常現象": "✨ 生活中常見但容易被忽略的小事"
+        }
+        if category in extra_hints:
+            st.success(f"🔎 **進階提示：**\n\n{extra_hints[category]}")
+        else:
+            st.success("🔎 **進階提示：** 試試從這個東西的『功能、外觀、使用場景』來思考")
+    
+    st.markdown("---")
     st.markdown("### 🛡️ 系統防禦規格")
     st.info("""
     ✅ 提問限制長度：50字  
     ⏱️ 防禦性提問延遲：0.8秒  
     🤖 全後端 AI 自行判定防禦  
+    🎨 漸層美化介面
     """)
     
     st.markdown("---")
@@ -241,10 +301,22 @@ with st.sidebar:
     4️⃣ 最後猜具體名稱
     """)
     
+    st.markdown("---")
+    st.markdown("### 📋 所有謎底分類一覽")
+    with st.expander("點擊展開查看所有分類"):
+        categories_used = {}
+        for puzzle, cat in PUZZLE_CATEGORIES.items():
+            if cat not in categories_used:
+                categories_used[cat] = []
+            categories_used[cat].append(puzzle)
+        for cat, puzzles in categories_used.items():
+            st.markdown(f"**{cat}**")
+            st.caption(f"{', '.join(puzzles[:5])}" + ("..." if len(puzzles) > 5 else ""))
+    
     # ⚠️ 競賽當天請將下面幾行註解掉！
-    #st.markdown("---")
-    #st.warning("🔐 [測試模式] 當前謎底")
-    #st.code(st.session_state.secret_answer, language="text")
+    st.markdown("---")
+    st.warning("🔐 [測試模式] 當前謎底")
+    st.code(st.session_state.secret_answer, language="text")
 
 # 顯示對話歷史
 for message in st.session_state.messages:
