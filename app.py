@@ -1,3 +1,10 @@
+from flask import Flask, render_template_string
+import random
+
+app = Flask(__name__)
+
+# HTML 模板（包含完整的猜謎遊戲前端）
+HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -7,12 +14,12 @@
     <style>
         * {
             box-sizing: border-box;
-            user-select: none; /* 避免選取文字干擾點擊，但無傷大雅 */
+            user-select: none;
         }
 
         body {
             background: linear-gradient(145deg, #1e2b3c 0%, #0f1a24 100%);
-            font-family: 'Segoe UI', 'Roboto', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            font-family: 'Segoe UI', 'Roboto', 'Noto Sans TC', system-ui, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -21,7 +28,6 @@
             padding: 20px;
         }
 
-        /* 主卡片 */
         .game-container {
             max-width: 1300px;
             width: 100%;
@@ -30,17 +36,14 @@
             border-radius: 3.5rem;
             padding: 1.8rem;
             box-shadow: 0 25px 45px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.1);
-            transition: all 0.2s;
         }
 
-        /* 兩欄佈局: 左分類 / 右謎題區 */
         .split-layout {
             display: flex;
             flex-wrap: wrap;
             gap: 1.8rem;
         }
 
-        /* 左側分類面板 */
         .categories-panel {
             flex: 1.2;
             min-width: 240px;
@@ -48,8 +51,6 @@
             border-radius: 2rem;
             padding: 1.6rem 1.2rem;
             box-shadow: 0 12px 24px rgba(0,0,0,0.2);
-            backdrop-filter: blur(0px);
-            transition: all 0.2s;
         }
 
         .categories-panel h2 {
@@ -112,12 +113,9 @@
             border: 1px solid #e0a82b;
         }
 
-        /* 右側遊戲區 */
         .quiz-panel {
             flex: 2.2;
             min-width: 280px;
-            background: #ffffffdd;
-            backdrop-filter: blur(12px);
             background: linear-gradient(135deg, #ffffff 0%, #fef5e6 100%);
             border-radius: 2rem;
             padding: 2rem 1.8rem;
@@ -163,7 +161,6 @@
             padding: 1.3rem;
             margin: 1.2rem 0;
             border-left: 8px solid #f4b942;
-            transition: all 0.2s;
         }
 
         .hint-label {
@@ -208,7 +205,6 @@
         .reveal-btn {
             background: #4a6e3b;
             color: white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
 
         .next-btn {
@@ -254,18 +250,14 @@
 <body>
 <div class="game-container">
     <div class="split-layout">
-        <!-- 左側分類區塊 : 保留實用的具體分類，去除抽象/生理/生物特徵等不好猜謎的類別 -->
         <div class="categories-panel">
             <h2>📂 點擊分類．AI 猜謎</h2>
-            <div class="category-grid" id="categoryList">
-                <!-- 動態生成按鈕，分類資料由 JS 控制 -->
-            </div>
+            <div class="category-grid" id="categoryList"></div>
             <div style="font-size: 0.7rem; margin-top: 1.2rem; text-align: center; color:#8f7a55;">
                 💡 點擊分類 → 謎底 & 提示切換為該類別
             </div>
         </div>
 
-        <!-- 右側問答區 -->
         <div class="quiz-panel">
             <div class="current-category-badge" id="activeCategoryLabel">🏷️ 未選擇</div>
             <div class="mystery-area">
@@ -292,9 +284,6 @@
 </div>
 
 <script>
-    // ======================= 分類資料庫 =======================
-    // 只保留「具體可猜、適合當謎底」的分類，去掉：抽象概念、生物特徵、生理現象、重複冗贅
-    // 依照原始清單但整理後實用分類 + 建立各自豐富的題庫與對應提示風格
     const categoriesData = {
         "交通設施": {
             icon: "🚦",
@@ -408,37 +397,17 @@
         }
     };
 
-    // 額外確保每個分類至少有三個題目，若有重疊(例如路燈同時在交通設施與公共設施)沒關係，允許不同分類提示不同
-    // 修補交通設施避免跟公共設施完全一樣但可接受（豐富度）
-    if(categoriesData["交通設施"].items.length<3){
-        categoriesData["交通設施"].items.push({word:"平交道", hint:"火車經過時柵欄會放下，鐵路與道路交叉處。"});
-    }
-    if(categoriesData["公共設施"].items.length<3){
-        categoriesData["公共設施"].items.push({word:"電話亭", hint:"公共空間中的小亭子，可以打電話(雖然現在少見)"});
-    }
-
-    // 分類按鈕順序 (依照實用且去除「抽象/生物/生理」)
     const categoryKeys = [
-        "交通設施",
-        "場所/地點",
-        "交通相關",
-        "日常用品",
-        "安全用品",
-        "辦公用品",
-        "公共設施",
-        "自然現象",
-        "電子產品",
-        "證件文件",
-        "廚房用品"
+        "交通設施", "場所/地點", "交通相關", "日常用品",
+        "安全用品", "辦公用品", "公共設施", "自然現象",
+        "電子產品", "證件文件", "廚房用品"
     ];
 
-    // 狀態管理
-    let currentCategory = "交通設施";      // 預設第一個
-    let currentQuestion = null;            // 存放當前 {word, hint}
-    let isAnswerRevealed = false;           // 是否顯示答案 (控制顯示 ??? 或 真實單詞)
-    let currentItemList = [];               // 當前分類的題庫陣列
+    let currentCategory = "交通設施";
+    let currentQuestion = null;
+    let isAnswerRevealed = false;
+    let currentItemList = [];
 
-    // DOM 元素
     const categoryListDiv = document.getElementById("categoryList");
     const activeCategoryLabelSpan = document.getElementById("activeCategoryLabel");
     const answerDisplaySpan = document.getElementById("answerDisplay");
@@ -447,45 +416,36 @@
     const nextBtn = document.getElementById("nextBtn");
     const statusMsgSpan = document.getElementById("statusMsg");
 
-    // 輔助: 根據分類名稱取得 icon
     function getCategoryIcon(catName){
         return categoriesData[catName]?.icon || "📌";
     }
 
-    // 重新整理當前分類的內部資料 (更換謎底時使用)
     function loadQuestionsForCategory(categoryName){
         if(!categoriesData[categoryName]){
-            // 若萬一不存在退回首個分類
             categoryName = categoryKeys[0];
         }
         const catData = categoriesData[categoryName];
         if(catData && catData.items.length > 0){
             currentItemList = [...catData.items];
         } else {
-            // fallback 臨時題庫
             currentItemList = [{word:"預設謎題", hint:"請檢查分類資料庫"}];
         }
     }
 
-    // 從 currentItemList 隨機挑選一題 (不改變揭露狀態)
     function pickRandomQuestion(){
         if(!currentItemList.length) return {word:"???", hint:"暫無謎題"};
         const randomIndex = Math.floor(Math.random() * currentItemList.length);
         return {...currentItemList[randomIndex]};
     }
 
-    // 刷新畫面: 更新謎底文字 (根據是否顯示答案)、更新提示、更新分類標籤
     function refreshUI(){
         if(!currentQuestion){
-            // 若無則隨機產生
             currentQuestion = pickRandomQuestion();
         }
-        // 更新顯示的謎底文字
         if(isAnswerRevealed){
             answerDisplaySpan.textContent = currentQuestion.word;
         } else {
-            // 隱藏答案顯示問號 (長度比例展現)
-            let hiddenStr = "???";
+            let hiddenStr = "????";
             if(currentQuestion.word && currentQuestion.word.length <= 6){
                 hiddenStr = "????".substring(0, currentQuestion.word.length);
                 if(hiddenStr.length<2) hiddenStr="??";
@@ -494,12 +454,9 @@
             }
             answerDisplaySpan.textContent = hiddenStr;
         }
-        // 提示永遠顯示當前問題的提示
         hintTextDiv.textContent = currentQuestion.hint || "AI 正在思考這個分類的線索...";
-        // 更新左上角分類標籤
         const icon = getCategoryIcon(currentCategory);
         activeCategoryLabelSpan.innerHTML = `${icon} 目前分類：${currentCategory}`;
-        // 狀態列更新
         if(!isAnswerRevealed){
             statusMsgSpan.innerHTML = `🔎 點擊「顯示答案」可查看謎底 | 目前分類共 ${currentItemList.length} 題`;
         } else {
@@ -507,37 +464,25 @@
         }
     }
 
-    // 更換當前分類 (重點功能: 使用者點分類時觸發)
     function switchCategory(newCategory){
         if(!categoriesData[newCategory]) return;
-        // 更新當前分類
         currentCategory = newCategory;
-        // 載入此分類題庫
         loadQuestionsForCategory(currentCategory);
-        // 重置揭露狀態
         isAnswerRevealed = false;
-        // 重新隨機挑選一個謎底
         currentQuestion = pickRandomQuestion();
-        // 刷新UI
         refreshUI();
-        // 更新按鈕 active 樣式
         updateActiveButtonStyle(newCategory);
-        // 另外產生一個輕提示(可選)
         statusMsgSpan.innerHTML = `✨ 已切換至【${currentCategory}】分類，AI 從該類隨機出題 ✨`;
         setTimeout(()=>{
             if(!isAnswerRevealed && statusMsgSpan.innerHTML.includes("已切換")){
-                // 避免蓋掉重要訊息但兩秒後可恢復一點
                 if(!isAnswerRevealed)
                     statusMsgSpan.innerHTML = `🔎 點擊「顯示答案」查看謎底 | 目前分類共 ${currentItemList.length} 題`;
             }
         },1800);
     }
 
-    // 隨機更換同分類的謎底 (下一題)
     function nextQuestionInSameCategory(){
-        // 更換題目
         currentQuestion = pickRandomQuestion();
-        // 若先前答案已揭露，換題後強制隱藏答案 (符合直覺)
         isAnswerRevealed = false;
         refreshUI();
         statusMsgSpan.innerHTML = `🔄 同分類【${currentCategory}】已更換新謎底，試試看！`;
@@ -548,10 +493,8 @@
         },2000);
     }
 
-    // 顯示答案 (不更換分類)
     function revealAnswer(){
         if(isAnswerRevealed){
-            // 已經顯示答案就簡單提示
             statusMsgSpan.innerHTML = `📢 答案已經是「${currentQuestion.word}」了，點下一題吧！`;
             return;
         }
@@ -560,7 +503,6 @@
         statusMsgSpan.innerHTML = `🔓 答案是「${currentQuestion.word}」！點「隨機換一題」繼續挑戰同分類。`;
     }
 
-    // 更新按鈕 active 樣式
     function updateActiveButtonStyle(activeCat){
         const allBtns = document.querySelectorAll(".cat-btn");
         allBtns.forEach(btn => {
@@ -573,7 +515,6 @@
         });
     }
 
-    // 建立左側分類按鈕 (過濾掉不實用的類別，我們只用了 categoryKeys 內定義好的)
     function buildCategoryButtons(){
         categoryListDiv.innerHTML = "";
         for(let cat of categoryKeys){
@@ -590,28 +531,31 @@
                 categoryListDiv.appendChild(btn);
             }
         }
-        // 預設高亮第一個分類
         if(categoryKeys.length){
             updateActiveButtonStyle(currentCategory);
         }
     }
 
-    // 初始化加載
     function initGame(){
         buildCategoryButtons();
-        // 設置預設分類 = 交通設施 (存在)
         currentCategory = "交通設施";
         loadQuestionsForCategory(currentCategory);
         currentQuestion = pickRandomQuestion();
         isAnswerRevealed = false;
         refreshUI();
-        // 綁定按鈕監聽
         revealBtn.addEventListener("click", revealAnswer);
         nextBtn.addEventListener("click", nextQuestionInSameCategory);
     }
 
-    // 執行初始化
     initGame();
 </script>
 </body>
 </html>
+'''
+
+@app.route('/')
+def index():
+    return render_template_string(HTML_TEMPLATE)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
