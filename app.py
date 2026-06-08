@@ -384,9 +384,9 @@ with st.sidebar:
             st.markdown(f"**{cat}**")
     
     # ⚠️ 競賽當天請將下面幾行註解掉！
-    st.markdown("---")
-    st.warning("🔐 [測試模式] 當前謎底")
-    st.code(st.session_state.secret_answer, language="text")
+    #st.markdown("---")
+    #st.warning("🔐 [測試模式] 當前謎底")
+    #st.code(st.session_state.secret_answer, language="text")
 
 # 顯示對話歷史
 for message in st.session_state.messages:
