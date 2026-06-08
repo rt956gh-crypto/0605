@@ -13,9 +13,9 @@ st.markdown("""
         box-shadow: 0 20px 30px rgba(0,0,0,0.2);
     }
     .answer-word {
-        font-size: 3rem;
+        font-size: 2.5rem;
         font-weight: 800;
-        letter-spacing: 8px;
+        letter-spacing: 6px;
         background: #2e3820;
         padding: 0.6rem 2rem;
         border-radius: 70px;
@@ -30,6 +30,9 @@ st.markdown("""
         border-left: 8px solid #f4b942;
     }
     .stButton button { background: #f4b942; color: #1e2c1c; font-weight: bold; border-radius: 3rem; }
+    .result-correct { background: #2e7d32; color: white; padding: 0.5rem; border-radius: 2rem; text-align: center; }
+    .result-wrong { background: #c62828; color: white; padding: 0.5rem; border-radius: 2rem; text-align: center; }
+    div[data-testid="stTextInput"] input { border-radius: 2rem; font-size: 1.1rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -150,20 +153,27 @@ st.markdown("""
 分類順序 = ["交通設施", "場所/地點", "交通相關", "日常用品", "安全用品", 
           "辦公用品", "公共設施", "自然現象", "電子產品", "證件文件", "廚房用品"]
 
-# 初始化
+# 初始化 session state
 if "目前分類" not in st.session_state:
     st.session_state.目前分類 = "交通設施"
 if "目前題目" not in st.session_state:
     st.session_state.目前題目 = random.choice(题库["交通設施"]["items"]).copy()
 if "顯示答案" not in st.session_state:
     st.session_state.顯示答案 = False
+if "猜題紀錄" not in st.session_state:
+    st.session_state.猜題紀錄 = ""  # 儲存上次猜的結果訊息
+if "分數" not in st.session_state:
+    st.session_state.分數 = {"答對": 0, "答錯": 0}
+if "已猜過" not in st.session_state:
+    st.session_state.已猜過 = False  # 同一題是否已經猜過
 
 # 標題
-st.markdown("<h1 style='text-align:center;color:#f4b942'>🎯 點擊分類．隨機謎底</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;color:#ffefcf'>點擊左側分類 → 隨機出現該類謎底 → 猜猜看！</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center;color:#f4b942'>🎯 點擊分類．猜謎遊戲</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;color:#ffefcf'>1. 點左側分類 → 2. 看提示猜答案 → 3. 輸入答案按送出</p>", unsafe_allow_html=True)
 
 左欄, 右欄 = st.columns([1.2, 2.2], gap="large")
 
+# ======================= 左側：分類選單 =======================
 with 左欄:
     st.markdown("### 📂 分類（點擊切換）")
     for 分類 in 分類順序:
@@ -175,37 +185,36 @@ with 左欄:
                     st.session_state.目前分類 = 分類
                     st.session_state.目前題目 = random.choice(题库[分類]["items"]).copy()
                     st.session_state.顯示答案 = False
+                    st.session_state.猜題紀錄 = ""
+                    st.session_state.已猜過 = False
                     st.rerun()
     
     st.markdown("---")
+    # 顯示分數
+    st.markdown(f"""
+    <div style="background:#2c3e2f; border-radius:1.5rem; padding:0.8rem; text-align:center">
+        <span style="color:#f4b942">⭐ 得分板</span><br>
+        <span style="color:#a5d6a5">✅ 答對：{st.session_state.分數['答對']}</span>&nbsp;&nbsp;
+        <span style="color:#ef9a9a">❌ 答錯：{st.session_state.分數['答錯']}</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.caption(f"📊 當前分類共 {len(题库[st.session_state.目前分類]['items'])} 題")
-    st.caption("🎲 每次點分類或換題都是隨機抽取")
+    st.caption("🎲 換分類或按「換一題」會隨機抽新題")
 
+# ======================= 右側：猜謎區 =======================
 with 右欄:
     icon = 题库[st.session_state.目前分類]["icon"]
     st.markdown(f"<div style='background:#2c5f2d;padding:0.4rem 1.2rem;border-radius:40px;color:#ffefcf;display:inline-block'>📌 目前：{icon} {st.session_state.目前分類}</div>", unsafe_allow_html=True)
     
-    # 顯示謎底（問號或答案）
+    # 顯示謎底（問號或答案）- 這裡改成不直接顯示答案，而是讓使用者輸入
     if st.session_state.顯示答案:
-        顯示文字 = st.session_state.目前題目["word"]
+        謎底顯示 = st.session_state.目前題目["word"]
+        st.info(f"🔓 答案是：**{謎底顯示}**")
     else:
-        長度 = len(st.session_state.目前題目["word"])
-        if 長度 <= 3:
-            顯示文字 = "???"
-        elif 長度 <= 6:
-            顯示文字 = "????"
-        else:
-            顯示文字 = "??????"
+        謎底顯示 = "???"
     
-    st.markdown(f"""
-    <div class="quiz-card">
-        <div style="text-align:center">
-            <div class="answer-word">{顯示文字}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # 提示
+    # 提示區域
     st.markdown(f"""
     <div class="hint-box">
         <div style="font-size:0.8rem;color:#8b6b3c">💡 AI 提示</div>
@@ -213,17 +222,67 @@ with 右欄:
     </div>
     """, unsafe_allow_html=True)
     
-    # 按鈕
-    col1, col2 = st.columns(2)
+    # ========== 使用者輸入答案的地方 ==========
+    st.markdown("### ✏️ 輸入你的答案")
+    
+    col_input, col_submit = st.columns([3, 1])
+    with col_input:
+        使用者答案 = st.text_input(
+            "答案",
+            placeholder="請輸入謎底...",
+            key="answer_input",
+            label_visibility="collapsed"
+        )
+    with col_submit:
+        送出按鈕 = st.button("📝 送出答案", use_container_width=True)
+    
+    # 處理送出答案
+    if 送出按鈕 and 使用者答案:
+        正確答案 = st.session_state.目前題目["word"]
+        if 使用者答案.strip() == 正確答案:
+            if not st.session_state.已猜過:
+                st.session_state.分數["答對"] += 1
+                st.session_state.已猜過 = True
+            st.session_state.猜題紀錄 = "correct"
+            st.balloons()
+        else:
+            if not st.session_state.已猜過:
+                st.session_state.分數["答錯"] += 1
+                st.session_state.已猜過 = True
+            st.session_state.猜題紀錄 = f"wrong|{正確答案}"
+    
+    # 顯示猜題結果
+    if st.session_state.猜題紀錄:
+        if st.session_state.猜題紀錄 == "correct":
+            st.markdown('<div class="result-correct">🎉 答對了！好厲害！ 🎉</div>', unsafe_allow_html=True)
+        elif st.session_state.猜題紀錄.startswith("wrong"):
+            正確 = st.session_state.猜題紀錄.split("|")[1]
+            st.markdown(f'<div class="result-wrong">😢 答錯了... 正確答案是「{正確}」</div>', unsafe_allow_html=True)
+    
+    # 操作按鈕
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("🔍 顯示答案", use_container_width=True):
-            st.session_state.顯示答案 = True
-            st.rerun()
-    with col2:
-        if st.button("🎲 隨機換一題", use_container_width=True):
+        if st.button("🎲 換一題", use_container_width=True):
             st.session_state.目前題目 = random.choice(题库[st.session_state.目前分類]["items"]).copy()
             st.session_state.顯示答案 = False
+            st.session_state.猜題紀錄 = ""
+            st.session_state.已猜過 = False
+            st.rerun()
+    with col2:
+        if st.button("🔍 提示答案", use_container_width=True):
+            st.session_state.顯示答案 = True
+            # 提示答案不算答錯，但標記已猜過避免再計分
+            if not st.session_state.已猜過:
+                st.session_state.分數["答錯"] += 1
+                st.session_state.已猜過 = True
+            st.rerun()
+    with col3:
+        if st.button("🔄 重置分數", use_container_width=True):
+            st.session_state.分數 = {"答對": 0, "答錯": 0}
+            st.session_state.猜題紀錄 = ""
             st.rerun()
 
+# 頁尾
 st.markdown("---")
-st.markdown("<p style='text-align:center;color:#cbcdb0;font-size:0.7rem'>✅ 點分類 = 隨機換該類謎底 · 提示也會切換 · 不需要 API Key</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;color:#cbcdb0;font-size:0.7rem'>✅ 點分類 = 隨機換該類謎底 · 輸入答案猜謎 · 自動計分</p>", unsafe_allow_html=True)
