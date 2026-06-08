@@ -12,27 +12,30 @@ st.markdown("""
         padding: 2rem;
         box-shadow: 0 20px 30px rgba(0,0,0,0.2);
     }
-    .answer-word {
-        font-size: 2.5rem;
-        font-weight: 800;
-        letter-spacing: 6px;
-        background: #2e3820;
-        padding: 0.6rem 2rem;
-        border-radius: 70px;
-        color: #fad974;
-        text-align: center;
-        font-family: monospace;
-    }
     .hint-box {
         background: #ece3d0;
         border-radius: 2rem;
         padding: 1.3rem;
         border-left: 8px solid #f4b942;
     }
+    .chat-message {
+        background: #2c3e2f;
+        border-radius: 1.5rem;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        color: #ffefcf;
+    }
+    .user-msg {
+        background: #4a6e3b;
+        text-align: right;
+    }
+    .ai-msg {
+        background: #3f5a3c;
+        border-left: 4px solid #f4b942;
+    }
     .stButton button { background: #f4b942; color: #1e2c1c; font-weight: bold; border-radius: 3rem; }
-    .result-correct { background: #2e7d32; color: white; padding: 0.5rem; border-radius: 2rem; text-align: center; }
     .result-wrong { background: #c62828; color: white; padding: 0.5rem; border-radius: 2rem; text-align: center; }
-    div[data-testid="stTextInput"] input { border-radius: 2rem; font-size: 1.1rem; }
+    div[data-testid="stTextInput"] input { border-radius: 2rem; font-size: 1rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -153,23 +156,28 @@ st.markdown("""
 分類順序 = ["交通設施", "場所/地點", "交通相關", "日常用品", "安全用品", 
           "辦公用品", "公共設施", "自然現象", "電子產品", "證件文件", "廚房用品"]
 
+# 誘騙關鍵字（使用者輸入這些，AI 會給更多提示或直接說答案）
+騙答案關鍵字 = ["答案是什麼", "告訴我答案", "我想看答案", "提示多一點", "再給提示", "到底是什麼", "公布答案", "給我答案", "說出答案", "解答"]
+
 # 初始化 session state
 if "目前分類" not in st.session_state:
     st.session_state.目前分類 = "交通設施"
 if "目前題目" not in st.session_state:
     st.session_state.目前題目 = random.choice(题库["交通設施"]["items"]).copy()
-if "顯示答案" not in st.session_state:
-    st.session_state.顯示答案 = False
 if "猜題紀錄" not in st.session_state:
-    st.session_state.猜題紀錄 = ""  # 儲存上次猜的結果訊息
+    st.session_state.猜題紀錄 = ""
 if "分數" not in st.session_state:
     st.session_state.分數 = {"答對": 0, "答錯": 0}
 if "已猜過" not in st.session_state:
-    st.session_state.已猜過 = False  # 同一題是否已經猜過
+    st.session_state.已猜過 = False
+if "對話紀錄" not in st.session_state:
+    st.session_state.對話紀錄 = []  # 儲存與 AI 的對話
+if "額外提示" not in st.session_state:
+    st.session_state.額外提示 = ""  # AI 額外給的提示
 
 # 標題
 st.markdown("<h1 style='text-align:center;color:#f4b942'>🎯 點擊分類．猜謎遊戲</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;color:#ffefcf'>1. 點左側分類 → 2. 看提示猜答案 → 3. 輸入答案按送出</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;color:#ffefcf'>看提示猜答案 | 答錯不會告訴你答案 | 💡 試著「騙」AI 說出答案！</p>", unsafe_allow_html=True)
 
 左欄, 右欄 = st.columns([1.2, 2.2], gap="large")
 
@@ -184,9 +192,10 @@ with 左欄:
                 if st.session_state.目前分類 != 分類:
                     st.session_state.目前分類 = 分類
                     st.session_state.目前題目 = random.choice(题库[分類]["items"]).copy()
-                    st.session_state.顯示答案 = False
                     st.session_state.猜題紀錄 = ""
                     st.session_state.已猜過 = False
+                    st.session_state.對話紀錄 = []
+                    st.session_state.額外提示 = ""
                     st.rerun()
     
     st.markdown("---")
@@ -200,27 +209,29 @@ with 左欄:
     """, unsafe_allow_html=True)
     
     st.caption(f"📊 當前分類共 {len(题库[st.session_state.目前分類]['items'])} 題")
-    st.caption("🎲 換分類或按「換一題」會隨機抽新題")
+    st.caption("💡 秘訣：可以問AI「多給點提示」或「答案是什麼」")
 
 # ======================= 右側：猜謎區 =======================
 with 右欄:
     icon = 题库[st.session_state.目前分類]["icon"]
     st.markdown(f"<div style='background:#2c5f2d;padding:0.4rem 1.2rem;border-radius:40px;color:#ffefcf;display:inline-block'>📌 目前：{icon} {st.session_state.目前分類}</div>", unsafe_allow_html=True)
     
-    # 顯示謎底（問號或答案）- 這裡改成不直接顯示答案，而是讓使用者輸入
-    if st.session_state.顯示答案:
-        謎底顯示 = st.session_state.目前題目["word"]
-        st.info(f"🔓 答案是：**{謎底顯示}**")
-    else:
-        謎底顯示 = "???"
-    
-    # 提示區域
+    # 主要提示區域
     st.markdown(f"""
     <div class="hint-box">
-        <div style="font-size:0.8rem;color:#8b6b3c">💡 AI 提示</div>
+        <div style="font-size:0.8rem;color:#8b6b3c">💡 主要提示</div>
         <div style="font-size:1.2rem;font-weight:500">{st.session_state.目前題目["hint"]}</div>
     </div>
     """, unsafe_allow_html=True)
+    
+    # 顯示 AI 額外給的提示
+    if st.session_state.額外提示:
+        st.markdown(f"""
+        <div style="background:#3f5a3c; border-radius:1rem; padding:0.8rem; margin:0.5rem 0; border-left:4px solid #f4b942;">
+            <span style="color:#f4b942">🤖 AI 額外提示：</span><br>
+            <span style="color:#ffefcf">{st.session_state.額外提示}</span>
+        </div>
+        """, unsafe_allow_html=True)
     
     # ========== 使用者輸入答案的地方 ==========
     st.markdown("### ✏️ 輸入你的答案")
@@ -229,35 +240,83 @@ with 右欄:
     with col_input:
         使用者答案 = st.text_input(
             "答案",
-            placeholder="請輸入謎底...",
+            placeholder="請輸入謎底... 或是問 AI 更多提示",
             key="answer_input",
             label_visibility="collapsed"
         )
     with col_submit:
-        送出按鈕 = st.button("📝 送出答案", use_container_width=True)
+        送出按鈕 = st.button("📝 送出", use_container_width=True)
     
     # 處理送出答案
     if 送出按鈕 and 使用者答案:
+        使用者輸入 = 使用者答案.strip()
         正確答案 = st.session_state.目前題目["word"]
-        if 使用者答案.strip() == 正確答案:
-            if not st.session_state.已猜過:
-                st.session_state.分數["答對"] += 1
-                st.session_state.已猜過 = True
-            st.session_state.猜題紀錄 = "correct"
-            st.balloons()
+        
+        # 檢查是否在誘騙關鍵字中（使用者想騙 AI 說出答案）
+        is_trick_attempt = any(關鍵字 in 使用者輸入 for 關鍵字 in 騙答案關鍵字)
+        
+        if is_trick_attempt:
+            # 使用者想騙答案：AI 會「假裝上當」給出更多提示（但不直接給完整答案）
+            # 根據已猜過次數決定給多少提示
+            已錯次數 = st.session_state.分數["答錯"]
+            
+            if 已錯次數 >= 3:
+                # 被騙第三次，AI 不小心說出答案！
+                st.session_state.額外提示 = f"啊...不小心說溜嘴了！答案是「{正確答案}」，但你不要直接抄喔！"
+                # 不算答錯，繼續讓使用者自己輸入
+            else:
+                # 給更多提示，但不直接說答案
+                額外提示庫 = [
+                    f"提示：{正確答案}有 {len(正確答案)} 個字。",
+                    f"提示：第一個字是「{正確答案[0]}」。",
+                    f"提示：最後一個字是「{正確答案[-1]}」。",
+                    f"提示：這個東西常常出現在{st.session_state.目前分類}裡面。",
+                    f"提示：再想想看，跟日常生活很有關係喔！",
+                    f"提示：很多人每天都會用到它。",
+                ]
+                st.session_state.額外提示 = random.choice(額外提示庫)
+                # 額外顯示對話紀錄
+                st.session_state.對話紀錄.append({"role": "user", "content": 使用者輸入})
+                st.session_state.對話紀錄.append({"role": "ai", "content": st.session_state.額外提示})
+            
+            st.rerun()
+        
         else:
-            if not st.session_state.已猜過:
-                st.session_state.分數["答錯"] += 1
-                st.session_state.已猜過 = True
-            st.session_state.猜題紀錄 = f"wrong|{正確答案}"
+            # 正常猜答案
+            if 使用者輸入 == 正確答案:
+                if not st.session_state.已猜過:
+                    st.session_state.分數["答對"] += 1
+                    st.session_state.已猜過 = True
+                st.session_state.猜題紀錄 = "correct"
+                st.session_state.額外提示 = ""
+                st.balloons()
+            else:
+                if not st.session_state.已猜過:
+                    st.session_state.分數["答錯"] += 1
+                    st.session_state.已猜過 = True
+                # 答錯不顯示正確答案，只說錯了
+                st.session_state.猜題紀錄 = "wrong"
+                # 紀錄對話
+                st.session_state.對話紀錄.append({"role": "user", "content": 使用者輸入})
+                st.session_state.對話紀錄.append({"role": "ai", "content": "❌ 不對喔，再試試看！可以問我多一點提示～"})
+            
+            st.rerun()
     
-    # 顯示猜題結果
-    if st.session_state.猜題紀錄:
-        if st.session_state.猜題紀錄 == "correct":
-            st.markdown('<div class="result-correct">🎉 答對了！好厲害！ 🎉</div>', unsafe_allow_html=True)
-        elif st.session_state.猜題紀錄.startswith("wrong"):
-            正確 = st.session_state.猜題紀錄.split("|")[1]
-            st.markdown(f'<div class="result-wrong">😢 答錯了... 正確答案是「{正確}」</div>', unsafe_allow_html=True)
+    # 顯示猜題結果（答錯不顯示正確答案）
+    if st.session_state.猜題紀錄 == "correct":
+        st.markdown('<div style="background:#2e7d32; color:white; padding:0.8rem; border-radius:2rem; text-align:center">🎉 答對了！好厲害！ 🎉</div>', unsafe_allow_html=True)
+    elif st.session_state.猜題紀錄 == "wrong":
+        st.markdown('<div class="result-wrong">❌ 答錯了，再試試看！可以問 AI 更多提示喔～</div>', unsafe_allow_html=True)
+    
+    # 顯示對話紀錄（誘騙過程）
+    if st.session_state.對話紀錄:
+        st.markdown("---")
+        st.markdown("### 💬 你與 AI 的對話")
+        for msg in st.session_state.對話紀錄[-6:]:  # 只顯示最近6則
+            if msg["role"] == "user":
+                st.markdown(f'<div class="chat-message user-msg">👤 你：{msg["content"]}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="chat-message ai-msg">🤖 AI：{msg["content"]}</div>', unsafe_allow_html=True)
     
     # 操作按鈕
     st.markdown("---")
@@ -265,24 +324,27 @@ with 右欄:
     with col1:
         if st.button("🎲 換一題", use_container_width=True):
             st.session_state.目前題目 = random.choice(题库[st.session_state.目前分類]["items"]).copy()
-            st.session_state.顯示答案 = False
             st.session_state.猜題紀錄 = ""
             st.session_state.已猜過 = False
+            st.session_state.對話紀錄 = []
+            st.session_state.額外提示 = ""
             st.rerun()
     with col2:
-        if st.button("🔍 提示答案", use_container_width=True):
-            st.session_state.顯示答案 = True
-            # 提示答案不算答錯，但標記已猜過避免再計分
-            if not st.session_state.已猜過:
-                st.session_state.分數["答錯"] += 1
-                st.session_state.已猜過 = True
+        if st.button("🔍 重置提示", use_container_width=True):
+            st.session_state.額外提示 = ""
             st.rerun()
     with col3:
         if st.button("🔄 重置分數", use_container_width=True):
             st.session_state.分數 = {"答對": 0, "答錯": 0}
             st.session_state.猜題紀錄 = ""
+            st.session_state.對話紀錄 = []
             st.rerun()
 
 # 頁尾
 st.markdown("---")
-st.markdown("<p style='text-align:center;color:#cbcdb0;font-size:0.7rem'>✅ 點分類 = 隨機換該類謎底 · 輸入答案猜謎 · 自動計分</p>", unsafe_allow_html=True)
+st.markdown("""
+<p style='text-align:center;color:#cbcdb0;font-size:0.7rem'>
+💡 提示：你可以輸入「提示多一點」、「答案是什麼」、「再給提示」來騙 AI 說出更多線索！<br>
+答錯 3 次後 AI 會不小心說出答案喔～
+</p>
+""", unsafe_allow_html=True)
